@@ -10,6 +10,4 @@ local link = filelink.create_link(filelink.SERVER, local_addr, local_port);
 
 print("Waiting for stuff");
 
-while(true) do  
-  filelink.recv_file(link);
-end
+filelink.command_loop(link);
