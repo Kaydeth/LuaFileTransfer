@@ -37,4 +37,17 @@ function filesystem.listDirectories(path)
   return filesystem.listContents(path, "/AD");
 end
 
+function filesystem.fileExists(absolute_path)
+  --This command will return 0 if the file exists and 1 if it does not
+  local cmd = "if exist " .. absolute_path .. " (call ) else (call)";
+  
+  local rc, state, code = os.execute(cmd);
+  
+  if(rc ~= nil) then
+    return true;
+  end
+  
+  return false;
+end
+
 return filesystem
