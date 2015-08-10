@@ -39,7 +39,7 @@ end
 
 function filesystem.fileExists(absolute_path)
   --This command will return 0 if the file exists and 1 if it does not
-  local cmd = "if exist " .. absolute_path .. " (call ) else (call)";
+  local cmd = "dir /A-D \"" .. absolute_path .. "\" > NUL 2>&1";
   
   local rc, state, code = os.execute(cmd);
   

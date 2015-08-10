@@ -1,3 +1,5 @@
+print("LSDEBUG: " .. package.path);
+
 local filelink = require("filelink");
 local fs = require("filesystem");
 

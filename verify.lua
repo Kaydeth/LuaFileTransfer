@@ -1,6 +1,6 @@
 local fs = require("filesystem");
 
-local source = "C:\\MinGW\\include\\";
+local source = "c:\\luke\\LuaFileTransfer\\input\\";
 local dest = "c:\\luke\\LuaFileTransfer\\output\\";
 
 local files = fs.listFiles(source);
@@ -12,7 +12,7 @@ for file_name in files do
   local source_file = source .. file_name;
   local dest_file = dest .. file_name;
   
-  local rc, state, code = os.execute("fc /b " .. source_file .. " " .. dest_file);
+  local rc, state, code = os.execute("fc /b \"" .. source_file .. "\" \"" .. dest_file .. "\"");
   
   if( rc == nil) then
     print(string.format("fc returned %s:%s:%s", tostring(rc), tostring(state), tostring(code)));

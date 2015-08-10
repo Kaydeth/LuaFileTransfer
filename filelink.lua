@@ -83,7 +83,14 @@ local function file_done(link, command, payload_size, packet)
   file.open_fd:close();
   
   link.file = nil;
-  link.state = filelink.IDLE_STATE;
+  
+  if(#link.file_list == 0) then
+    link.dir = nil;
+    link.state = filelink.IDLE_STATE;
+  else
+    filelink.send_file_request(link);
+    link.state = filelink.REQUEST_FILE_STATE;
+  end
 end
 
 local function file_list_done(link, command, payload_size, packet)
@@ -92,6 +99,7 @@ local function file_list_done(link, command, payload_size, packet)
     link.dir = nil;
     link.state = filelink.IDLE_STATE;
   else
+    filelink.send_file_request(link);
     link.state = filelink.REQUEST_FILE_STATE;
   end
 end
@@ -125,20 +133,23 @@ local function processCommand(link, command, payload_size, packet, payload)
       end
       
       local file_name = payload;
-      filelink.send_file(link, link.dir .. file_name);
-    end
+      filelink.send_file(link, link.dir .. file_name, file_name);
     elseif(command == "fn") then
-      if( link.state ~= filelink.IDLE_STATE ) then
+      if( link.state ~= filelink.IDLE_STATE and link.state ~= filelink.REQUEST_FILE_STATE ) then
         error(string.format("Unexpected command %s in state %s", command, link.state));
       end
       
       if( link.file ~= nil and link.file.open_fd ~= nil) then
-        error("Unexpected fn command. File still open " .. file.file_name);
+        error("Unexpected fn command. File still open " .. link.file.file_name);
       end
       
       local file = {file_name = nil, open_fd = nil, file_bytes = 0}
       
-      file.file_name = payload;    
+      if(link.state == filelink.REQUEST_FILE_STATE) then
+        file.file_name = link.dir .. payload;
+      else
+        file.file_name = payload;
+      end
       print("Opening file " .. file.file_name);
       file.open_fd, err_msg = io.open(string.gsub(file.file_name, "\\", "\\\\"), "wb");
       
@@ -166,7 +177,9 @@ local function processCommand(link, command, payload_size, packet, payload)
         if( filesystem.fileExists(abs_path) == false ) then
           print("Need new file " .. file_name);
           table.insert(link.file_list, file_name);
-        end        
+        else
+          print("LSDEBUG: file exists " .. file_name);
+        end
       else
           error(string.format("Unexpected command %s in state %s", command, link.state));
       end
@@ -273,6 +286,8 @@ function filelink.send_file_list(link, source_dir, dest_dir, file_names)
   for file_name in file_names do
     local header = string.format("fl %04d ", #file_name);
     local packet = header .. file_name;
+    
+    print("LSDEBUG: sending fl: " .. file_name);
     
     link.sock:send(packet);
   end
