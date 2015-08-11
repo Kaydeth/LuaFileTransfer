@@ -38,16 +38,24 @@ function filesystem.listDirectories(path)
 end
 
 function filesystem.fileExists(absolute_path)
-  --This command will return 0 if the file exists and 1 if it does not
-  local cmd = "dir /A-D \"" .. absolute_path .. "\" > NUL 2>&1";
+  local cmd = string.format("if exist \"%s\" echo 1", absolute_path);
   
-  local rc, state, code = os.execute(cmd);
+  local pipe, err_msg = io.popen(cmd, "r");
   
-  if(rc ~= nil) then
-    return true;
+  if(pipe == nil) then
+    error(string.format("Could not open pipe for command %s. Error: %s",
+      tostring(cmd), tostring(err_msg)));
   end
   
-  return false;
+  local output = pipe:read("*a");
+  
+  if( output == "" ) then
+    return false;
+  elseif( string.sub(output,1,1) == "1") then
+    return true;
+  else
+    error(string.format("Unexpected return from command %s. Return: %s", tostring(cmd), tostring(output)));
+  end
 end
 
 return filesystem
