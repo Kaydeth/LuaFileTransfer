@@ -1,5 +1,8 @@
 print("LSDEBUG: " .. package.path);
 
+package.path="./?.lua;./luasocket/lua/?.lua"
+package.cpath="./luasocket/?.dll"
+
 local filelink = require("filelink");
 local fs = require("filesystem");
 
