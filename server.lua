@@ -5,6 +5,10 @@ package.cpath="./luasocket/?.dll"
 
 local filelink = require("filelink");
 local fs = require("filesystem");
+local log = require("log");
+
+log.open_log();
+log.info("Server started");
 
 local local_addr = "localhost"
 local local_port = "16000"
