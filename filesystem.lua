@@ -1,5 +1,7 @@
 local filesystem = {}
 
+local win_cmd = require "win_cmd";
+
 function filesystem.listContents(path, option)
   local cmd = "dir /B";
   
@@ -40,14 +42,7 @@ end
 function filesystem.fileExists(absolute_path)
   local cmd = string.format("if exist \"%s\" echo 1", absolute_path);
   
-  local pipe, err_msg = io.popen(cmd, "r");
-  
-  if(pipe == nil) then
-    error(string.format("Could not open pipe for command %s. Error: %s",
-      tostring(cmd), tostring(err_msg)));
-  end
-  
-  local output = pipe:read("*a");
+  local output = win_cmd.get_cmd_output(cmd);
   
   if( output == "" ) then
     return false;

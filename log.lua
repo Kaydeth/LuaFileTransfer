@@ -1,25 +1,13 @@
 local log = {}
 
+local win_cmd = require("win_cmd");
+
 local LOG_DIR = "logs\\"
 local LOG_FILE = "file_transfer_log_%s_%s_%s.log";
 local LOG_FD = nil;
 
 function log.open_log()
-  local cmd = "date /t";
-  local pipe, err_msg = io.popen(cmd, "r");
-  
-  if(pipe == nil) then
-    error(string.format("Could not open pipe for command %s. Error: %s",
-      tostring(cmd), tostring(err_msg)));
-  end
-  
-  local output = pipe:read("*a");
-  
-  local iter = string.gmatch(output, "%d+");
-  
-  local month = iter();
-  local day = iter();
-  local year = iter();
+  local year, month, day = win_cmd.get_parsed_date();
   
   local file_name = string.format(LOG_FILE, year, month, day);
   local rel_path = LOG_DIR .. file_name;
@@ -38,7 +26,10 @@ function log.close_log()
 end
 
 function log.info(message)
-  LOG_FD:write(message .. "\n");
+  local date = win_cmd.get_date();
+  local time = win_cmd.get_time();
+  
+  LOG_FD:write(string.format("%s %s %s\n", date, time, message));
   LOG_FD:flush();
 end
 
