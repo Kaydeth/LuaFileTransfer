@@ -3,6 +3,7 @@ local filelink = {}
 local socket = require("socket");
 local sock_lib = require("sock_lib");
 local filesystem = require("filesystem");
+local log = require("log");
 
 filelink.SERVER = "server";
 filelink.CLIENT = "client";
@@ -17,9 +18,11 @@ local header_size = 8;  --bytes
 local command_size = 3;   --bytes
 local payload_size = packet_size - header_size;  --bytes
 
+local temp_suffix = ".luafiletransfer.temp";
+
 function filelink.create_link(link_type, local_addr, local_port, remote_addr, remote_port)
   local link = { sock = nil, state = nil, file = nil, dir = nil, file_list = nil};
-  local file = { file_name = nil, open_fd = nil, file_bytes = 0 };
+  local file = { file_name = nil, temp_file = nil, open_fd = nil, file_bytes = 0 };
   local sock = nil;
  
   if(link_type == filelink.SERVER) then
@@ -79,23 +82,30 @@ local function file_done(link, command, payload_size, packet)
   file.file_bytes = file.file_bytes + payload_size;      
 
   print("Last packet for " .. file.file_name .. " has " .. payload_size .. " bytes");
-  print("Closing file " .. file.file_name .. ". " .. file.file_bytes .. " bytes");
+  print("Closing file " .. file.temp_file .. ". " .. file.file_bytes .. " bytes");
   file.open_fd:close();
+  local rn, err_msg = os.rename(file.temp_file, file.file_name);
+  
+  if( rn == nil) then
+    error(string.format("Failed to rename file, old: %s, new: %s", old_file, new_file));
+  end
   
   link.file = nil;
-  
+    
   if(#link.file_list == 0) then
+    filelink.remove_all_temp_files(link.dir);
     link.dir = nil;
     link.state = filelink.IDLE_STATE;
   else
     filelink.send_file_request(link);
     link.state = filelink.REQUEST_FILE_STATE;
-  end
+  end  
 end
 
 local function file_list_done(link, command, payload_size, packet)
   
   if(#link.file_list == 0) then
+    filelink.remove_all_temp_files(link.dir);
     link.dir = nil;
     link.state = filelink.IDLE_STATE;
   else
@@ -143,18 +153,20 @@ local function processCommand(link, command, payload_size, packet, payload)
         error("Unexpected fn command. File still open " .. link.file.file_name);
       end
       
-      local file = {file_name = nil, open_fd = nil, file_bytes = 0}
+      local file = {file_name = nil, temp_file = nil, open_fd = nil, file_bytes = 0}
       
       if(link.state == filelink.REQUEST_FILE_STATE) then
         file.file_name = link.dir .. payload;
+        file.temp_file = file.file_name .. temp_suffix;
       else
         file.file_name = payload;
+        file.temp_file = payload .. temp_suffix;
       end
-      print("Opening file " .. file.file_name);
-      file.open_fd, err_msg = io.open(string.gsub(file.file_name, "\\", "\\\\"), "wb");
+      print("Opening file " .. file.temp_file);
+      file.open_fd, err_msg = io.open(string.gsub(file.temp_file, "\\", "\\\\"), "wb");
       
       if(file.open_fd == nil) then
-        error("Can't open file, " .. file.file_name .. ": " .. err_msg);
+        error("Can't open file, " .. file.temp_file .. ": " .. err_msg);
       end
       
       link.file = file;
@@ -303,6 +315,15 @@ function filelink.send_file_request(link)
   local packet = string.format("fr %04d %s", #file_name, file_name);
   
   link.sock:send(packet);
+end
+
+function filelink.remove_all_temp_files(dir)
+  local file_names = filesystem.listFiles(dir .. "*" .. temp_suffix);
+  
+  for file in file_names do
+    log.info("Cleaning up old temp file: " .. dir .. file);
+    os.remove(dir .. file);
+  end
 end
 
 return filelink
